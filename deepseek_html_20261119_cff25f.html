@@ -1,0 +1,2107 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f1216">
+<title>Trail Hub</title>
+
+<!-- Manifeste inline (PWA basique, installabilité) -->
+<link rel="manifest" href='data:application/manifest+json,{"name":"Trail Hub","short_name":"Trail Hub","start_url":"./","display":"standalone","background_color":"%230f1216","theme_color":"%23ff6b35","icons":[{"src":"data:image/svg%2Bxml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 fill=%27%23ff6b35%27/%3E%3Ctext x=%2796%27 y=%27128%27 font-size=%27100%27 text-anchor=%27middle%27 fill=%27white%27%3ET%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<!-- Chart.js & JSZip & Leaflet JS chargés en fin de body -->
+
+<style>
+/* ============================= THEME ============================= */
+:root{
+  --bg:#0f1216; --panel:#1a1f26; --panel2:#232b34; --border:#2a323c;
+  --text:#e6ecf1; --muted:#8b96a5; --accent:#ff6b35; --accent2:#ffb347;
+  --green:#3ecf8e; --orange:#ff9f43; --red:#ee5253; --blue:#4c9aff;
+  --purple:#a55eea; --yellow:#feca57; --shadow:0 2px 8px rgba(0,0,0,.35);
+}
+[data-theme="light"]{
+  --bg:#f5f7fa; --panel:#ffffff; --panel2:#f0f3f7; --border:#dfe4ea;
+  --text:#1a1f26; --muted:#6b7280; --shadow:0 2px 8px rgba(0,0,0,.08);
+}
+/* ============================= RESET ============================= */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  background:var(--bg); color:var(--text);
+  padding-bottom:78px; min-height:100vh;
+  -webkit-tap-highlight-color:transparent;
+}
+@media(min-width:768px){ body{padding-bottom:0;padding-top:0;} }
+h1,h2,h3,h4{margin:0 0 .5em}
+a{color:var(--accent)}
+/* ============================= TOPBAR & TABS ============================= */
+.topbar{
+  position:sticky; top:0; z-index:20;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 16px; background:var(--panel); border-bottom:1px solid var(--border);
+}
+.topbar h1{font-size:18px;font-weight:700;margin:0;letter-spacing:.3px}
+.topbar h1 span{color:var(--accent)}
+.icon-btn{background:none;border:1px solid var(--border);border-radius:8px;
+  padding:6px 10px;font-size:16px;cursor:pointer;color:var(--text);min-height:36px}
+.tabs{
+  position:fixed; bottom:0; left:0; right:0; z-index:20;
+  display:flex; background:var(--panel); border-top:1px solid var(--border);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.tabs button{
+  flex:1; min-height:60px; padding:8px 2px; background:none; border:none;
+  color:var(--muted); font-size:11px; font-weight:500;
+  display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer;
+}
+.tabs button.active{color:var(--accent)}
+.tabs button .ti{font-size:20px}
+@media(min-width:768px){
+  .tabs{position:sticky; top:58px; bottom:auto; border-top:none; border-bottom:1px solid var(--border); max-width:1200px; margin:0 auto; border-radius:0 0 12px 12px}
+  .tabs button{min-height:48px; font-size:13px; flex-direction:row; gap:6px}
+  .tabs button .ti{font-size:16px}
+}
+/* ============================= MAIN ============================= */
+main{max-width:1200px;margin:0 auto;padding:16px}
+.tab{display:none}
+.tab.active{display:block;animation:fade .2s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.grid{display:grid;gap:14px;grid-template-columns:1fr}
+@media(min-width:640px){ .grid.g2{grid-template-columns:1fr 1fr} }
+@media(min-width:960px){ .grid.g3{grid-template-columns:repeat(3,1fr)} }
+/* ============================= CARDS / PANELS ============================= */
+.card{
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:12px; padding:14px; box-shadow:var(--shadow);
+}
+.card h3{font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
+.card h2{font-size:18px;margin-bottom:10px}
+.card .big{font-size:32px;font-weight:700;letter-spacing:-.5px}
+.card .sub{color:var(--muted);font-size:12px;margin-top:2px}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;flex-wrap:wrap}
+.card-header h2{font-size:16px;margin:0}
+.subsec{margin-top:20px}
+.subsec>h2{font-size:18px;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--accent);display:inline-block}
+/* ============================= FORMS ============================= */
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:500}
+input,select,textarea{
+  width:100%; background:var(--panel2); color:var(--text);
+  border:1px solid var(--border); border-radius:8px;
+  padding:10px 12px; font-size:15px; font-family:inherit; min-height:44px;
+}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+.field{margin-bottom:12px}
+.row{display:grid;gap:10px;grid-template-columns:1fr 1fr}
+@media(min-width:640px){ .row.r3{grid-template-columns:1fr 1fr 1fr} }
+/* ============================= BUTTONS ============================= */
+button,.btn{
+  min-height:44px; padding:10px 16px; border-radius:8px; font-family:inherit;
+  font-size:14px; font-weight:600; cursor:pointer;
+  background:var(--panel2); color:var(--text); border:1px solid var(--border);
+  transition:filter .15s, transform .05s;
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+}
+button:active{transform:scale(.98)}
+button:hover:not(:disabled){filter:brightness(1.08)}
+button:disabled{opacity:.5;cursor:not-allowed}
+button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+button.danger{background:var(--red);color:#fff;border-color:var(--red)}
+button.ghost{background:transparent}
+button.small{min-height:36px;padding:6px 10px;font-size:13px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+/* ============================= BADGES / GRADES ============================= */
+.grade{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:34px; height:34px; padding:0 10px; border-radius:8px;
+  font-weight:800; font-size:16px; color:#fff; letter-spacing:.5px;
+}
+.g-S{background:var(--purple)}
+.g-A{background:var(--blue)}
+.g-B{background:var(--green)}
+.g-C{background:var(--yellow);color:#333}
+.g-D{background:var(--orange)}
+.g-E{background:var(--red)}
+.g-none{background:var(--panel2);color:var(--muted)}
+.zone{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;color:#fff}
+.zone.gris{background:#6b7280}
+.zone.vert{background:var(--green)}
+.zone.orange{background:var(--orange)}
+.zone.rouge{background:var(--red)}
+/* ============================= DASHBOARD ============================= */
+.dash-grades{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
+.dash-grades>div{text-align:center}
+.dash-grades .label{font-size:11px;color:var(--muted);margin-top:4px}
+.acwr-big{font-size:36px;font-weight:800}
+/* ============================= ACTIVITIES LIST ============================= */
+.activity{
+  display:grid; grid-template-columns: 42px 1fr auto auto;
+  gap:8px; align-items:center; padding:8px 0;
+  border-bottom:1px solid var(--border); font-size:13px;
+}
+.activity:last-child{border-bottom:none}
+.activity .date{color:var(--muted);font-size:11px}
+.activity .type{font-weight:600;font-size:12px;color:var(--muted)}
+.activity .metrics{font-size:12px;color:var(--muted)}
+.activity .metrics b{color:var(--text);font-weight:600}
+.activity .del{background:none;border:none;color:var(--red);padding:6px;cursor:pointer;font-size:16px;min-height:auto}
+/* ============================= CHARTS ============================= */
+.chart-box{position:relative;width:100%;height:220px}
+.chart-box.small{height:80px}
+.chart-box.tall{height:280px}
+/* ============================= TIMER OVERLAY ============================= */
+.timer-overlay{
+  position:fixed; inset:0; z-index:1000;
+  display:flex; flex-direction:column; align-items:center; justify-content:space-between;
+  background:var(--bg); color:var(--text);
+  padding:24px 20px calc(24px + env(safe-area-inset-bottom));
+  transition:background .15s,color .15s;
+}
+.timer-overlay.effort{ background:var(--text); color:var(--bg); }
+.timer-overlay.effort button{ background:transparent; color:var(--bg); border-color:var(--bg); }
+.timer-overlay.effort .timer-progress-bar{ background:var(--bg); }
+.timer-overlay[hidden]{display:none}
+.timer-info{ text-align:center; padding-top:20px; }
+.timer-phase{ font-size:22px; font-weight:700; text-transform:uppercase; letter-spacing:2px; opacity:.85 }
+.timer-rep{ font-size:14px; opacity:.7; margin-top:6px; min-height:18px }
+.timer-time{ font-size:min(28vw,160px); font-weight:800; line-height:1; font-variant-numeric:tabular-nums; text-align:center }
+.timer-progress{ width:100%; max-width:600px; height:6px; background:rgba(127,127,127,.25); border-radius:4px; overflow:hidden }
+.timer-progress-bar{ height:100%; background:var(--accent); width:0; transition:width .1s linear }
+.timer-controls{ display:flex; gap:12px; flex-wrap:wrap; justify-content:center; width:100%; max-width:600px }
+.timer-controls button{ min-height:60px; flex:1; min-width:80px; font-size:16px; background:var(--panel); border:1px solid var(--border); color:var(--text) }
+.timer-overlay.effort .timer-controls button{ background:transparent; color:var(--bg); border-color:var(--bg) }
+/* ============================= MAP ============================= */
+#map{ height:320px; border-radius:12px; overflow:hidden; border:1px solid var(--border) }
+@media(min-width:640px){ #map{height:400px} }
+/* ============================= NUTRITION / WEATHER ============================= */
+.weather-grid{display:grid;gap:10px;grid-template-columns:repeat(2,1fr)}
+@media(min-width:640px){ .weather-grid{grid-template-columns:repeat(4,1fr)} }
+.weather-card{ background:var(--panel2); padding:12px; border-radius:10px; text-align:center }
+.weather-card .val{ font-size:22px; font-weight:700 }
+.weather-card .lbl{ font-size:11px; color:var(--muted); margin-top:2px }
+/* ============================= DETAILS / ACCORDION ============================= */
+details{ background:var(--panel); border:1px solid var(--border); border-radius:12px; margin-bottom:10px; padding:0; }
+details summary{ padding:14px 16px; cursor:pointer; font-weight:600; list-style:none; display:flex; justify-content:space-between; align-items:center }
+details summary::-webkit-details-marker{display:none}
+details summary::after{content:"▾";font-size:12px;color:var(--muted);transition:transform .2s}
+details[open] summary::after{transform:rotate(180deg)}
+details .inner{padding:0 16px 16px}
+/* ============================= DROPZONE ============================= */
+.dropzone{
+  border:2px dashed var(--border); border-radius:12px; padding:24px;
+  text-align:center; color:var(--muted); cursor:pointer; transition:border-color .2s, background .2s;
+}
+.dropzone:hover,.dropzone.drag{border-color:var(--accent); background:var(--panel2); color:var(--text)}
+/* ============================= MISC ============================= */
+.muted{color:var(--muted);font-size:12px}
+.center{text-align:center}
+.hidden{display:none!important}
+.tag{display:inline-block;padding:2px 8px;border-radius:6px;background:var(--panel2);font-size:11px;color:var(--muted);margin-left:4px}
+.mt{margin-top:10px}
+.splits-table{ width:100%; border-collapse:collapse; font-size:13px }
+.splits-table th,.splits-table td{ padding:6px 8px; border-bottom:1px solid var(--border); text-align:left }
+.splits-table th{ color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <h1>Trail<span>Hub</span></h1>
+  <button class="icon-btn" id="theme-toggle" title="Changer de thème" aria-label="Changer de thème">🌙</button>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button data-tab="dashboard" class="active" role="tab" aria-selected="true"><span class="ti">🏠</span><span>Accueil</span></button>
+  <button data-tab="analyse" role="tab"><span class="ti">📊</span><span>Analyse</span></button>
+  <button data-tab="train" role="tab"><span class="ti">🏃</span><span>Entraînement</span></button>
+  <button data-tab="terrain" role="tab"><span class="ti">🗺️</span><span>Terrain</span></button>
+  <button data-tab="data" role="tab"><span class="ti">💾</span><span>Données</span></button>
+</nav>
+
+<main>
+<!-- ============================================================
+     ONGLET 1 — TABLEAU DE BORD
+     ============================================================ -->
+<section id="tab-dashboard" class="tab active">
+  <div class="grid g2">
+    <div class="card">
+      <div class="card-header"><h2>Niveau running</h2></div>
+      <div class="dash-grades" id="dash-grades"></div>
+      <div class="center mt"><span class="muted">Rang global :</span> <span id="dash-global" class="grade g-none">—</span></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2>Charge d'entraînement (ACWR)</h2></div>
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <div class="acwr-big" id="dash-acwr">—</div>
+        <div id="dash-acwr-zone"></div>
+      </div>
+      <div class="sub" id="dash-acwr-detail">Aiguë / chronique sur 7 j / 28 j</div>
+      <div class="chart-box small mt"><canvas id="dash-acwr-chart"></canvas></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2>Objectif course</h2></div>
+      <div id="dash-objectif-content">
+        <div class="muted">Aucun objectif défini. Renseignez-le dans les réglages ci-dessous.</div>
+      </div>
+      <details class="mt" style="margin-top:10px"><summary>Configurer l'objectif</summary><div class="inner">
+        <div class="field"><label>Nom de la course</label><input id="obj-nom" placeholder="UTMB, Marathon de Paris…"></div>
+        <div class="row"><div class="field"><label>Date</label><input id="obj-date" type="date"></div>
+        <div class="field"><label>Distance (km)</label><input id="obj-dist" type="number" step="0.1" min="0"></div></div>
+        <div class="field"><label>D+ (m)</label><input id="obj-dplus" type="number" min="0"></div>
+        <button class="primary" id="obj-save">Enregistrer</button>
+      </div></details>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2>Prochaine séance</h2></div>
+      <div id="dash-seance">
+        <div class="muted">Aucune séance chargée dans le minuteur pour l'instant.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g3 mt" style="margin-top:16px">
+    <button class="primary" data-goto="analyse">📊 Analyse & Niveau</button>
+    <button class="primary" data-goto="train">🏃 Entraînement</button>
+    <button class="primary" data-goto="terrain">🗺️ Terrain</button>
+  </div>
+</section>
+
+<!-- ============================================================
+     ONGLET 2 — ANALYSE & NIVEAU
+     ============================================================ -->
+<section id="tab-analyse" class="tab">
+
+  <!-- 2.A Import Strava -->
+  <div class="subsec">
+    <h2>Import et charge d'entraînement</h2>
+
+    <div class="card">
+      <div class="card-header"><h2>1. Importer un export Strava</h2></div>
+      <div class="dropzone" id="dropzone">
+        <div style="font-size:36px">📦</div>
+        <div><b>Déposez ici votre export .zip Strava</b></div>
+        <div class="muted">ou cliquez pour sélectionner le fichier</div>
+        <input type="file" id="file-input" accept=".zip" hidden>
+      </div>
+      <div class="muted mt">Le fichier contient <code>activities.csv</code>. Le parsing se fait entièrement dans votre navigateur, rien n'est envoyé.</div>
+      <div id="import-status" class="mt"></div>
+    </div>
+
+    <div class="card mt" style="margin-top:14px">
+      <div class="card-header"><h2>2. Ajouter une séance manuellement</h2></div>
+      <div class="row r3">
+        <div class="field"><label>Date</label><input id="man-date" type="date"></div>
+        <div class="field"><label>Distance (km)</label><input id="man-dist" type="number" step="0.1" min="0" placeholder="10"></div>
+        <div class="field"><label>D+ (m)</label><input id="man-dplus" type="number" min="0" placeholder="250"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Durée (min)</label><input id="man-dur" type="number" min="0" placeholder="60"></div>
+        <div class="field"><label>Type</label>
+          <select id="man-type"><option>Run</option><option>TrailRun</option><option>VirtualRun</option></select>
+        </div>
+      </div>
+      <button class="primary" id="man-add">Ajouter la séance</button>
+    </div>
+
+    <div class="card mt" style="margin-top:14px">
+      <div class="card-header"><h2>3. Charge & ACWR</h2>
+        <div class="btns">
+          <label style="margin:0;font-size:11px;color:var(--muted)">Coef D+ :</label>
+          <input type="number" id="coef-dplus" min="1" max="50" step="1" style="width:70px;min-height:36px;padding:4px 8px">
+        </div>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap">
+        <div><div class="acwr-big" id="acwr-value">—</div><div class="sub">ACWR</div></div>
+        <div id="acwr-zone"></div>
+        <div class="muted" id="acwr-detail"></div>
+      </div>
+      <div class="muted mt">Zones : &lt;0,8 sous-charge (gris) · 0,8–1,3 optimal (vert) · 1,3–1,5 vigilance (orange) · &gt;1,5 risque (rouge). Outil indicatif, pas un avis médical.</div>
+    </div>
+
+    <div class="card mt" style="margin-top:14px">
+      <div class="card-header"><h2>Volume hebdomadaire (12 semaines)</h2></div>
+      <div class="chart-box"><canvas id="chart-volume"></canvas></div>
+    </div>
+
+    <div class="card mt" style="margin-top:14px">
+      <div class="card-header"><h2>Charge quotidienne & courbe ACWR (42 jours)</h2></div>
+      <div class="chart-box tall"><canvas id="chart-acwr"></canvas></div>
+    </div>
+
+    <div class="card mt" style="margin-top:14px">
+      <div class="card-header">
+        <h2>Activités (<span id="act-count">0</span>)</h2>
+        <select id="act-filter" style="width:auto;min-height:36px;padding:4px 8px;font-size:12px">
+          <option value="30">30 derniers jours</option>
+          <option value="90">90 derniers jours</option>
+          <option value="0">Tout</option>
+        </select>
+      </div>
+      <div id="activity-list"></div>
+    </div>
+  </div>
+
+  <!-- 2.B Barème running -->
+  <div class="subsec" style="margin-top:30px">
+    <h2>Barème running</h2>
+
+    <div class="card">
+      <div class="card-header"><h2>Performances</h2></div>
+      <div class="field"><label>Sexe (pour le barème)</label>
+        <select id="perf-sex"><option value="H">Homme</option><option value="F">Femme</option></select>
+      </div>
+      <div class="row">
+        <div class="field"><label>Semi-marathon (hh:mm:ss)</label>
+          <input id="perf-semi" placeholder="1:30:00"></div>
+        <div class="field"><label>5 km (mm:ss)</label>
+          <input id="perf-5k" placeholder="22:00"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>D+ cumulé en 1 h de montée (m)</label>
+          <input id="perf-cote" type="number" min="0" placeholder="800"></div>
+        <div class="field"><label>Volume (km/semaine, auto)</label>
+          <input id="perf-volume" readonly></div>
+      </div>
+      <div class="btns">
+        <button class="primary" id="perf-save">Calculer et enregistrer</button>
+      </div>
+      <div class="muted mt">Équivalence : 10 km ≈ semi × 0,44 · marathon ≈ semi × 2,11. Volume calculé automatiquement sur les 4 dernières semaines.</div>
+    </div>
+
+    <div class="card mt" style="margin-top:14px">
+      <div class="card-header"><h2>Radar & rangs</h2></div>
+      <div class="chart-box tall"><canvas id="chart-radar"></canvas></div>
+      <div id="grade-list" class="mt"></div>
+    </div>
+
+    <div class="card mt" style="margin-top:14px">
+      <div class="card-header"><h2>Recommandations</h2></div>
+      <div id="recos"><div class="muted">Saisissez vos performances pour obtenir des recommandations.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     ONGLET 3 — ENTRAÎNEMENT
+     ============================================================ -->
+<section id="tab-train" class="tab">
+
+  <!-- 3.A Minuteur -->
+  <div class="subsec">
+    <h2>Minuteur de fractionné</h2>
+
+    <div class="card">
+      <div class="card-header"><h2>Configuration</h2></div>
+      <div class="field"><label>Nom de la séance</label>
+        <input id="t-nom" placeholder="Ex : 10×1min côtes"></div>
+
+      <div class="row">
+        <div class="field"><label>Échauffement (mm:ss)</label>
+          <input id="t-warmup" value="10:00" placeholder="10:00"></div>
+        <div class="field"><label>Retour au calme (mm:ss)</label>
+          <input id="t-cooldown" value="05:00" placeholder="05:00"></div>
+      </div>
+
+      <div id="series-list"></div>
+      <button class="ghost small" id="t-add-series">+ Ajouter une série</button>
+
+      <div class="field mt"><label>Récupération entre séries (mm:ss)</label>
+        <input id="t-recupseries" value="00:00" placeholder="00:00"></div>
+
+      <div class="btns mt">
+        <button class="primary" id="t-start">▶ Démarrer</button>
+        <button id="t-save">💾 Sauvegarder la séance</button>
+      </div>
+    </div>
+
+    <div class="card mt" style="margin-top:14px">
+      <div class="card-header"><h2>Séances sauvegardées</h2></div>
+      <div id="saved-seances"><div class="muted">Aucune séance sauvegardée.</div></div>
+    </div>
+  </div>
+
+  <!-- 3.B Générateur -->
+  <div class="subsec" style="margin-top:30px">
+    <h2>Générateur de séances</h2>
+    <div class="card">
+      <div class="row">
+        <div class="field"><label>Objectif</label>
+          <select id="gen-objectif">
+            <option value="Vitesse">Vitesse</option>
+            <option value="Cote">Côte</option>
+            <option value="Endurance">Endurance</option>
+            <option value="Recuperation">Récupération</option>
+          </select>
+        </div>
+        <div class="field"><label>Niveau</label>
+          <select id="gen-niveau">
+            <option value="E">E</option><option value="D">D</option>
+            <option value="C" selected>C</option><option value="B">B</option>
+            <option value="A">A</option><option value="S">S</option>
+          </select>
+        </div>
+      </div>
+      <button class="primary" id="gen-go">Générer</button>
+      <div id="gen-output" class="mt"></div>
+    </div>
+  </div>
+
+  <!-- 3.C Calculateur d'allure -->
+  <div class="subsec" style="margin-top:30px">
+    <h2>Calculateur d'allure & temps de passage</h2>
+    <div class="card">
+      <div class="row r3">
+        <div class="field"><label>Distance (km)</label><input id="pc-dist" type="number" step="0.1" value="42"></div>
+        <div class="field"><label>D+ (m)</label><input id="pc-dplus" type="number" value="2000"></div>
+        <div class="field"><label>D− (m)</label><input id="pc-dminus" type="number" value="2000"></div>
+      </div>
+      <div class="field"><label>Allure sur plat (min/km)</label>
+        <input id="pc-pace" value="6:00" placeholder="6:00"></div>
+      <button class="primary" id="pc-calc">Calculer</button>
+      <div id="pc-result" class="mt"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     ONGLET 4 — TERRAIN
+     ============================================================ -->
+<section id="tab-terrain" class="tab">
+
+  <!-- 4.A Trace -->
+  <div class="subsec">
+    <h2>Planificateur de trace</h2>
+    <div class="card">
+      <div id="map"></div>
+      <div class="btns mt">
+        <button class="small" id="map-undo">↩ Dernier point</button>
+        <button class="small" id="map-clear">🗑 Effacer</button>
+        <button class="small primary" id="map-gpx">⬇ Export GPX</button>
+      </div>
+      <div class="mt" id="map-info">
+        <span class="muted">Cliquez sur la carte pour ajouter des points.</span>
+      </div>
+      <div class="chart-box mt"><canvas id="chart-profil"></canvas></div>
+    </div>
+  </div>
+
+  <!-- 4.B Météo -->
+  <div class="subsec" style="margin-top:30px">
+    <h2>Météo des sentiers</h2>
+    <div class="card">
+      <div class="row">
+        <div class="field"><label>Lieu</label><input id="weather-q" placeholder="Chamonix, Annecy…"></div>
+        <div class="field" style="display:flex;align-items:flex-end"><button class="primary" id="weather-go" style="width:100%">Rechercher</button></div>
+      </div>
+      <div id="weather-out" class="mt"></div>
+    </div>
+  </div>
+
+  <!-- 4.C Nutrition -->
+  <div class="subsec" style="margin-top:30px">
+    <h2>Planificateur de ravitaillement</h2>
+    <div class="card">
+      <div class="row">
+        <div class="field"><label>Durée prévue (h)</label><input id="nut-dur" type="number" step="0.5" value="4"></div>
+        <div class="field"><label>Poids (kg)</label><input id="nut-poids" type="number" step="1" value="70"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Température (°C)</label><input id="nut-temp" type="number" value="18"></div>
+        <div class="field"><label>Intensité</label>
+          <select id="nut-int"><option value="moderee">Modérée</option>
+          <option value="soutenue">Soutenue</option><option value="ultra">Ultra</option></select>
+        </div>
+      </div>
+      <button class="primary" id="nut-go">Calculer</button>
+      <div id="nut-out" class="mt"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     ONGLET 5 — DONNÉES
+     ============================================================ -->
+<section id="tab-data" class="tab">
+  <div class="subsec"><h2>Gestion des données</h2></div>
+
+  <div class="card">
+    <div class="card-header"><h2>Export / Import</h2></div>
+    <div class="btns">
+      <button class="primary" id="data-export">⬇ Exporter tout en JSON</button>
+      <button id="data-import-btn">⬆ Importer un JSON</button>
+      <input type="file" id="data-import-file" accept=".json" hidden>
+    </div>
+    <div class="field mt"><label>Mode d'import</label>
+      <select id="data-import-mode">
+        <option value="merge">Fusionner avec l'existant</option>
+        <option value="replace">Remplacer toutes les données</option>
+      </select>
+    </div>
+    <div id="data-status" class="muted mt"></div>
+  </div>
+
+  <div class="card mt" style="margin-top:14px">
+    <div class="card-header"><h2>Réinitialisation</h2></div>
+    <div class="muted">Efface définitivement toutes les données Trail Hub stockées dans votre navigateur.</div>
+    <button class="danger mt" id="data-reset">🗑 Réinitialiser toutes les données</button>
+  </div>
+
+  <div class="card mt" style="margin-top:14px">
+    <div class="card-header"><h2>Confidentialité</h2></div>
+    <p>Trail Hub ne collecte <b>aucune donnée</b>. Pas de compte, pas de cookie, pas d'analytics, pas de backend. Tout est stocké dans le <code>localStorage</code> de votre navigateur, sous le préfixe <code>trailhub.</code>.</p>
+    <p>Les seules requêtes réseau sont :</p>
+    <ul class="muted" style="margin:6px 0 0 18px;padding:0">
+      <li>Chargement des bibliothèques (Chart.js, Leaflet, JSZip) via CDN</li>
+      <li>Tuiles OpenStreetMap pour la carte</li>
+      <li>API Open-Meteo (météo, altitude)</li>
+      <li>API Nominatim (géocodage)</li>
+    </ul>
+    <p class="mt">L'import Strava se fait entièrement dans le navigateur : le fichier .zip ne quitte jamais votre appareil.</p>
+  </div>
+
+  <div class="card mt" style="margin-top:14px">
+    <div class="card-header"><h2>À propos</h2></div>
+    <p>Trail Hub est un outil personnel pour traileurs : minuteur de fractionné, analyse de charge (ACWR), barème running, planification et météo. Aucune inscription, aucun serveur, aucune limite.</p>
+    <p class="muted">Barèmes running inspirés des tables de niveaux usuelles (Fédé, VMA, chronos de référence). Les seuils sont ajustables dans le code (voir <code>BAREME</code>).</p>
+  </div>
+</section>
+</main>
+
+<!-- ============================================================
+     OVERLAY MINUTEUR (plein écran)
+     ============================================================ -->
+<div id="timer-overlay" class="timer-overlay" hidden role="dialog" aria-label="Minuteur en cours">
+  <div class="timer-info">
+    <div class="timer-phase" id="timer-phase">Échauffement</div>
+    <div class="timer-rep" id="timer-rep"></div>
+  </div>
+  <div class="timer-time" id="timer-time">00:00</div>
+  <div class="timer-progress"><div class="timer-progress-bar" id="timer-progress-bar"></div></div>
+  <div class="timer-controls">
+    <button id="timer-pause">⏸ Pause</button>
+    <button id="timer-skip">⏭ Passer</button>
+    <button id="timer-stop">⏹ Arrêter</button>
+    <button id="timer-mute" title="Mute">🔊</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+<script>
+'use strict';
+/* =============================================================
+   TRAIL HUB — application web privée, 100% locale
+   ============================================================= */
+
+/* ------------------ Utilitaires ------------------ */
+const $ = (s, c=document) => c.querySelector(s);
+const $$ = (s, c=document) => [...c.querySelectorAll(s)];
+const round = (n, d=1) => Math.round(n * 10**d) / 10**d;
+const fmt = (n, d=1) => round(n, d).toLocaleString('fr-FR', {maximumFractionDigits:d});
+
+/* Parse "mm:ss" ou "hh:mm:ss" ou secondes brutes -> secondes */
+function parseMMSS(str) {
+  if (str === null || str === undefined || str === '') return 0;
+  if (typeof str === 'number') return Math.round(str);
+  const s = String(str).trim();
+  if (!s.includes(':')) return Math.round(parseFloat(s) || 0);
+  const parts = s.split(':').map(p => parseFloat(p) || 0);
+  if (parts.length === 3) return Math.round(parts[0]*3600 + parts[1]*60 + parts[2]);
+  if (parts.length === 2) return Math.round(parts[0]*60 + parts[1]);
+  return 0;
+}
+function fmtMMSS(sec) {
+  sec = Math.max(0, Math.round(sec));
+  const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
+  return h > 0
+    ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+    : `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+function todayISO() {
+  const d = new Date();
+  return d.toISOString().slice(0,10);
+}
+
+/* ------------------ STORAGE ------------------ */
+const PREFIX = 'trailhub.';
+const Store = {
+  get(key, def) {
+    try {
+      const v = localStorage.getItem(PREFIX + key);
+      return v === null ? def : JSON.parse(v);
+    } catch { return def; }
+  },
+  set(key, val) {
+    try { localStorage.setItem(PREFIX + key, JSON.stringify(val)); }
+    catch(e) { console.warn('storage', e); }
+  },
+  remove(key){ localStorage.removeItem(PREFIX + key); },
+  all() {
+    const out = {};
+    Object.keys(localStorage).filter(k => k.startsWith(PREFIX))
+      .forEach(k => { try { out[k.slice(PREFIX.length)] = JSON.parse(localStorage.getItem(k)); } catch {} });
+    return out;
+  },
+  clearAll() {
+    Object.keys(localStorage).filter(k => k.startsWith(PREFIX)).forEach(k => localStorage.removeItem(k));
+  }
+};
+
+/* ------------------ SETTINGS ------------------ */
+const DEFAULT_SETTINGS = {
+  theme: 'dark',
+  sex: 'H',
+  coefficientDplus: 10,
+  allurePlat: '6:00',
+  paceCoefUp: 0.5,
+  paceCoefDown: 0.25,
+  objectif: { nom: '', date: '', distance: 0, dplus: 0 },
+  derniereSeance: null
+};
+let settings = Object.assign({}, DEFAULT_SETTINGS, Store.get('settings', {}));
+const saveSettings = () => Store.set('settings', settings);
+
+/* ------------------ THEME ------------------ */
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', settings.theme);
+  $('#theme-toggle').textContent = settings.theme === 'dark' ? '🌙' : '☀️';
+}
+$('#theme-toggle').addEventListener('click', () => {
+  settings.theme = settings.theme === 'dark' ? 'light' : 'dark';
+  saveSettings(); applyTheme(); refreshAllCharts();
+});
+applyTheme();
+
+/* ------------------ NAVIGATION ------------------ */
+function goTab(name) {
+  $$('.tab').forEach(el => el.classList.toggle('active', el.id === 'tab-' + name));
+  $$('.tabs button').forEach(b => {
+    const on = b.dataset.tab === name;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', on);
+  });
+  window.scrollTo({top:0, behavior:'smooth'});
+  if (name === 'dashboard') refreshDashboard();
+  if (name === 'analyse') refreshAnalyse();
+}
+$$('.tabs button').forEach(b => b.addEventListener('click', () => goTab(b.dataset.tab)));
+$$('[data-goto]').forEach(b => b.addEventListener('click', () => goTab(b.dataset.goto)));
+
+/* ------------------ ACTIVITIES (calculs) ------------------ */
+const getActivities = () => Store.get('activities', []);
+const saveActivities = (arr) => Store.set('activities', arr);
+
+function activityCharge(a, coef) {
+  return (a.dureeMin || 0) + (a.dplusM || 0) / (coef || 10);
+}
+
+/* ACWR sur les 28 derniers jours glissants */
+function computeACWR(activities, coef) {
+  const now = new Date(); now.setHours(0,0,0,0);
+  let acute = 0, chronic = 0;
+  activities.forEach(a => {
+    if (!a.date) return;
+    const d = new Date(a.date); d.setHours(0,0,0,0);
+    const diff = Math.floor((now - d) / 86400000);
+    if (diff < 0) return;
+    const c = activityCharge(a, coef);
+    if (diff < 7) acute += c;
+    if (diff < 28) chronic += c;
+  });
+  chronic = chronic / 4;
+  const acwr = chronic > 0 ? acute / chronic : 0;
+  return {acute: round(acute,0), chronic: round(chronic,0), acwr: round(acwr,2)};
+}
+
+function acwrZone(v) {
+  if (v <= 0) return {label:'—', cls:'gris'};
+  if (v < 0.8) return {label:'Sous-charge', cls:'gris'};
+  if (v <= 1.3) return {label:'Optimal', cls:'vert'};
+  if (v <= 1.5) return {label:'Vigilance', cls:'orange'};
+  return {label:'Risque', cls:'rouge'};
+}
+
+/* Charges quotidiennes des N derniers jours (index 0 = il y a N-1 jours, index N-1 = aujourd'hui) */
+function dailyCharges(activities, days, coef) {
+  const arr = Array(days).fill(0);
+  const today = new Date(); today.setHours(0,0,0,0);
+  activities.forEach(a => {
+    const d = new Date(a.date); d.setHours(0,0,0,0);
+    const diff = Math.floor((today - d) / 86400000);
+    if (diff >= 0 && diff < days) arr[days - 1 - diff] += activityCharge(a, coef);
+  });
+  return arr;
+}
+
+/* ACWR glissant jour par jour (calculé sur chaque fenêtre) */
+function acwrSeries(activities, days, coef) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const series = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const target = new Date(today); target.setDate(today.getDate() - i);
+    let acute = 0, chronic = 0;
+    activities.forEach(a => {
+      const d = new Date(a.date); d.setHours(0,0,0,0);
+      const diff = Math.floor((target - d) / 86400000);
+      if (diff < 0) return;
+      const c = activityCharge(a, coef);
+      if (diff < 7) acute += c;
+      if (diff < 28) chronic += c;
+    });
+    const ch = chronic / 4;
+    series.push(ch > 0 ? round(acute / ch, 2) : null);
+  }
+  return series;
+}
+
+function weeklyVolume(activities, weeks) {
+  const arr = Array(weeks).fill(0);
+  const now = new Date(); now.setHours(0,0,0,0);
+  const dow = (now.getDay() + 6) % 7;
+  const weekStart = new Date(now); weekStart.setDate(now.getDate() - dow);
+  activities.forEach(a => {
+    const d = new Date(a.date); d.setHours(0,0,0,0);
+    const wd = Math.floor((weekStart - d) / (86400000 * 7));
+    if (wd >= 0 && wd < weeks) arr[weeks - 1 - wd] += (a.distanceKm || 0);
+  });
+  return arr.map(v => round(v, 1));
+}
+
+function avgWeeklyVolume(activities, weeks = 4) {
+  const now = new Date(); now.setHours(0,0,0,0);
+  const cutoff = new Date(now); cutoff.setDate(now.getDate() - weeks*7);
+  let total = 0;
+  activities.forEach(a => {
+    const d = new Date(a.date); d.setHours(0,0,0,0);
+    if (d >= cutoff && d <= now) total += (a.distanceKm || 0);
+  });
+  return round(total / weeks, 1);
+}
+
+/* ------------------ CHART.JS helpers ------------------ */
+const charts = {};
+const chartColors = () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  return {
+    text: dark ? '#e6ecf1' : '#1a1f26',
+    grid: dark ? 'rgba(230,236,241,0.08)' : 'rgba(26,31,38,0.08)',
+    accent: '#ff6b35'
+  };
+};
+function mkChart(id, config) {
+  if (charts[id]) { charts[id].destroy(); }
+  const el = document.getElementById(id);
+  if (!el) return null;
+  charts[id] = new Chart(el.getContext('2d'), config);
+  return charts[id];
+}
+
+/* ------------------ ONGLET 2.A : IMPORT STRAVA ------------------ */
+const dropzone = $('#dropzone');
+const fileInput = $('#file-input');
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault(); dropzone.classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f) handleStravaFile(f);
+});
+fileInput.addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (f) handleStravaFile(f);
+});
+
+/* Parser CSV minimal (gère quotes et retours ligne) */
+function parseCSV(text) {
+  const rows = [];
+  let cur = [], field = '', inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQ) {
+      if (c === '"') {
+        if (text[i+1] === '"') { field += '"'; i++; }
+        else inQ = false;
+      } else field += c;
+    } else {
+      if (c === '"') inQ = true;
+      else if (c === ',') { cur.push(field); field = ''; }
+      else if (c === '\n') { cur.push(field); rows.push(cur); cur = []; field = ''; }
+      else if (c === '\r') {}
+      else field += c;
+    }
+  }
+  if (field || cur.length) { cur.push(field); rows.push(cur); }
+  return rows.filter(r => r.some(c => c.trim() !== ''));
+}
+
+function findCol(headers, ...names) {
+  for (const n of names) {
+    const i = headers.findIndex(h => h.trim().toLowerCase() === n.toLowerCase());
+    if (i >= 0) return i;
+  }
+  for (const n of names) {
+    const i = headers.findIndex(h => h.trim().toLowerCase().includes(n.toLowerCase()));
+    if (i >= 0) return i;
+  }
+  return -1;
+}
+
+function parseActivityDate(str) {
+  if (!str) return null;
+  let d = new Date(str);
+  if (!isNaN(d.getTime())) return d;
+  // Format "Jan 1, 2024, 10:30:00 AM"
+  const m = String(str).match(/([A-Za-z]+)\s+(\d+),\s+(\d{4}),?\s+(\d+):(\d+):(\d+)\s*([AP]M)?/i);
+  if (m) {
+    const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+    let h = parseInt(m[4]);
+    if (m[7] && m[7].toUpperCase() === 'PM' && h < 12) h += 12;
+    if (m[7] && m[7].toUpperCase() === 'AM' && h === 12) h = 0;
+    d = new Date(parseInt(m[3]), months[m[1].toLowerCase().slice(0,3)], parseInt(m[2]), h, parseInt(m[5]), parseInt(m[6]));
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+
+async function handleStravaFile(file) {
+  const status = $('#import-status');
+  status.innerHTML = '<div class="muted">Lecture du fichier…</div>';
+  try {
+    const zip = await JSZip.loadAsync(file);
+    const csvFile = zip.file(/activities\.csv$/i)[0];
+    if (!csvFile) throw new Error('activities.csv introuvable dans le zip');
+    const csv = await csvFile.async('string');
+    const rows = parseCSV(csv);
+    if (rows.length < 2) throw new Error('CSV vide');
+    const headers = rows[0];
+    const idx = {
+      id: findCol(headers, 'Activity ID', 'ID'),
+      date: findCol(headers, 'Activity Date', 'Date'),
+      type: findCol(headers, 'Activity Type', 'Type'),
+      dist: findCol(headers, 'Distance'),
+      time: findCol(headers, 'Moving Time', 'Elapsed Time', 'Time'),
+      dplus: findCol(headers, 'Elevation Gain', 'D+', 'Elevation')
+    };
+    if (idx.date < 0 || idx.type < 0 || idx.dist < 0) throw new Error('Colonnes essentielles manquantes (date / type / distance)');
+
+    const coef = settings.coefficientDplus;
+    const existing = getActivities();
+    const existingIds = new Set(existing.map(a => a.id));
+    const added = [];
+
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      const typeNorm = (r[idx.type] || '').toLowerCase().replace(/[\s_]/g, '');
+      if (!['run','trailrun','virtualrun','running','trailrunning'].includes(typeNorm)) continue;
+      const d = parseActivityDate(r[idx.date]);
+      if (!d) continue;
+      const id = (idx.id >= 0 && r[idx.id]) ? 'strava_' + r[idx.id] : 'strava_' + d.toISOString() + '_' + i;
+      if (existingIds.has(id)) continue;
+      let rawDist = parseFloat((r[idx.dist] || '0').toString().replace(',', '.')) || 0;
+      const distanceKm = rawDist > 100 ? rawDist / 1000 : rawDist;
+      const dplusM = idx.dplus >= 0 ? (parseFloat(r[idx.dplus]) || 0) : 0;
+      let sec = idx.time >= 0 ? (parseFloat(r[idx.time]) || 0) : 0;
+      const dureeMin = Math.round(sec / 60);
+      if (distanceKm <= 0 && dureeMin <= 0) continue;
+      added.push({
+        id,
+        date: d.toISOString().slice(0,10),
+        source: 'strava',
+        type: r[idx.type].trim(),
+        distanceKm: round(distanceKm, 2),
+        dplusM: Math.round(dplusM),
+        dureeMin
+      });
+      existingIds.add(id);
+    }
+
+    const merged = existing.concat(added);
+    saveActivities(merged);
+    status.innerHTML = `<div class="zone vert">Import réussi : ${added.length} nouvelles activités (sur ${merged.length} au total).</div>`;
+    refreshAnalyse(); refreshDashboard();
+  } catch (e) {
+    console.error(e);
+    status.innerHTML = `<div class="zone rouge">Erreur d'import : ${e.message}</div>`;
+  }
+}
+
+/* ------------------ Activité manuelle ------------------ */
+$('#man-add').addEventListener('click', () => {
+  const date = $('#man-date').value || todayISO();
+  const dist = parseFloat($('#man-dist').value) || 0;
+  const dplus = parseInt($('#man-dplus').value) || 0;
+  const dur = parseInt($('#man-dur').value) || 0;
+  const type = $('#man-type').value;
+  if (!dist && !dur) return alert('Renseignez distance ou durée');
+  const activities = getActivities();
+  activities.push({
+    id: 'man_' + Date.now(),
+    date, source: 'manual', type,
+    distanceKm: dist, dplusM: dplus, dureeMin: dur
+  });
+  saveActivities(activities);
+  $('#man-dist').value = ''; $('#man-dplus').value = ''; $('#man-dur').value = '';
+  refreshAnalyse(); refreshDashboard();
+});
+
+/* ------------------ Rendus activités ------------------ */
+function renderActivityList() {
+  const filterDays = parseInt($('#act-filter').value) || 0;
+  const coef = settings.coefficientDplus;
+  const today = new Date(); today.setHours(0,0,0,0);
+  let acts = getActivities().slice().sort((a,b) => b.date.localeCompare(a.date));
+  if (filterDays > 0) {
+    acts = acts.filter(a => {
+      const d = new Date(a.date); d.setHours(0,0,0,0);
+      return (today - d) / 86400000 <= filterDays;
+    });
+  }
+  $('#act-count').textContent = acts.length;
+  const list = $('#activity-list');
+  if (!acts.length) {
+    list.innerHTML = '<div class="muted">Aucune activité.</div>';
+    return;
+  }
+  list.innerHTML = acts.map(a => {
+    const charge = Math.round(activityCharge(a, coef));
+    const src = a.source === 'strava' ? 'Strava' : 'Manuel';
+    return `<div class="activity" data-id="${a.id}">
+      <div class="date">${a.date.slice(5)}</div>
+      <div>
+        <div>${a.type} <span class="tag">${src}</span></div>
+        <div class="metrics">${fmt(a.distanceKm)} km · +${a.dplusM} m · ${a.dureeMin} min</div>
+      </div>
+      <div class="metrics"><b>${charge}</b><br><span style="font-size:10px">charge</span></div>
+      <button class="del" data-del="${a.id}" title="Supprimer">×</button>
+    </div>`;
+  }).join('');
+  $$('[data-del]', list).forEach(btn => btn.addEventListener('click', e => {
+    e.stopPropagation();
+    if (!confirm('Supprimer cette activité ?')) return;
+    const id = btn.dataset.del;
+    saveActivities(getActivities().filter(a => a.id !== id));
+    refreshAnalyse(); refreshDashboard();
+  }));
+}
+$('#act-filter').addEventListener('change', renderActivityList);
+
+/* ------------------ Coef D+ ------------------ */
+$('#coef-dplus').value = settings.coefficientDplus;
+$('#coef-dplus').addEventListener('change', () => {
+  settings.coefficientDplus = Math.max(1, parseInt($('#coef-dplus').value) || 10);
+  saveSettings();
+  refreshAnalyse(); refreshDashboard();
+});
+
+/* ------------------ BARÈME RUNNING ------------------ */
+/* Structure : seuils "upper" = temps (plus bas = mieux), "lower" = valeur (plus haut = mieux) */
+const BAREME = {
+  endurance: {
+    seuils: [75, 85, 95, 105, 120],   // minutes, mode upper (semi)
+    femmeMult: 1.12
+  },
+  vitesse: {
+    seuils: [17, 19, 21, 23, 26],     // minutes, mode upper (5 km)
+    femmeMult: 1.12
+  },
+  cote: {
+    seuils: [1200, 1000, 800, 600, 400], // m, mode lower
+    femmeMult: 0.85
+  },
+  volume: {
+    seuils: [100, 80, 60, 40, 25],    // km/sem, mode lower
+    femmeMult: 0.85
+  }
+};
+const GRADES = ['E','D','C','B','A','S'];
+
+function gradeFromThresholds(value, thresholds, mode) {
+  if (value === null || value === undefined || isNaN(value) || value <= 0) return null;
+  // thresholds[0] = S, [1] = A, [2] = B, [3] = C, [4] = D
+  if (mode === 'upper') { // plus bas = mieux
+    if (value < thresholds[0]) return 'S';
+    if (value < thresholds[1]) return 'A';
+    if (value < thresholds[2]) return 'B';
+    if (value < thresholds[3]) return 'C';
+    if (value < thresholds[4]) return 'D';
+    return 'E';
+  } else { // plus haut = mieux
+    if (value > thresholds[0]) return 'S';
+    if (value > thresholds[1]) return 'A';
+    if (value > thresholds[2]) return 'B';
+    if (value > thresholds[3]) return 'C';
+    if (value > thresholds[4]) return 'D';
+    return 'E';
+  }
+}
+
+function evalBareme() {
+  const sex = $('#perf-sex').value;
+  const mult = sex === 'F' ? 1.12 : 1;
+  const red = sex === 'F' ? 0.85 : 1;
+
+  const semiSec = parseMMSS($('#perf-semi').value);
+  const cinqSec = parseMMSS($('#perf-5k').value);
+  const coteM = parseInt($('#perf-cote').value) || 0;
+
+  const volume = avgWeeklyVolume(getActivities(), 4);
+  $('#perf-volume').value = volume > 0 ? fmt(volume) : '';
+
+  const res = {};
+  if (semiSec > 0) {
+    res.endurance = gradeFromThresholds(semiSec/60, BAREME.endurance.seuils.map(t => t*mult), 'upper');
+  }
+  if (cinqSec > 0) {
+    res.vitesse = gradeFromThresholds(cinqSec/60, BAREME.vitesse.seuils.map(t => t*mult), 'upper');
+  }
+  if (coteM > 0) {
+    res.cote = gradeFromThresholds(coteM, BAREME.cote.seuils.map(t => t*red), 'lower');
+  }
+  if (volume > 0) {
+    res.volume = gradeFromThresholds(volume, BAREME.volume.seuils.map(t => t*red), 'lower');
+  }
+
+  const grades = Object.values(res).filter(Boolean);
+  const global = grades.length
+    ? GRADES[Math.round(grades.reduce((s,g) => s + GRADES.indexOf(g), 0) / grades.length)]
+    : null;
+
+  // Affichage
+  const card = { Endurance: res.endurance, Vitesse: res.vitesse, Côte: res.cote, Volume: res.volume };
+  $('#grade-list').innerHTML = Object.entries(card).map(([k,g]) =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+      <span>${k}</span>
+      <span class="grade ${g ? 'g-'+g : 'g-none'}">${g || '—'}</span>
+    </div>`).join('') +
+    `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-weight:700">
+      <span>Rang global</span>
+      <span class="grade ${global ? 'g-'+global : 'g-none'}">${global || '—'}</span>
+    </div>`;
+
+  // Radar
+  const colors = chartColors();
+  mkChart('chart-radar', {
+    type: 'radar',
+    data: {
+      labels: ['Endurance','Vitesse','Côte','Volume'],
+      datasets: [{
+        label: 'Rang',
+        data: [
+          res.endurance ? GRADES.indexOf(res.endurance)+1 : 0,
+          res.vitesse ? GRADES.indexOf(res.vitesse)+1 : 0,
+          res.cote ? GRADES.indexOf(res.cote)+1 : 0,
+          res.volume ? GRADES.indexOf(res.volume)+1 : 0
+        ],
+        backgroundColor: 'rgba(255,107,53,0.25)',
+        borderColor: colors.accent,
+        borderWidth: 2,
+        pointBackgroundColor: colors.accent
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        r: {
+          min: 0, max: 6,
+          ticks: { display: false, stepSize: 1 },
+          pointLabels: { color: colors.text, font: { size: 12 } },
+          grid: { color: colors.grid },
+          angleLines: { color: colors.grid }
+        }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+
+  // Recommandations
+  const reco = [];
+  const RECOS = {
+    endurance: { titre:'Endurance', txt:"Sorties longues progressives (Z2) + 1 séance à allure semi (ex : 2×20 min à allure semi, récup 5 min).", key:'endurance' },
+    vitesse: { titre:'Vitesse', txt:"VMA courte 30/30 (12-16×30 s) + côtes courtes (8-10×45 s) pour la puissance.", key:'vitesse' },
+    cote:    { titre:'Côte',    txt:"Séances de montée (répétitions en côte 2-4 min) + renforcement trail, descente technique.", key:'cote' },
+    volume:  { titre:'Volume',  txt:"Augmenter progressivement le kilométrage (+10 %/semaine max), ajouter une sortie longue.", key:'volume' }
+  };
+  // Points faibles = rang E/D ou composante non évaluée avec données manquantes
+  Object.entries(card).forEach(([k,g]) => {
+    if (g === 'E' || g === 'D') {
+      const kk = k === 'Côte' ? 'cote' : k.toLowerCase();
+      if (RECOS[kk]) reco.push(RECOS[kk]);
+    }
+  });
+
+  const recosEl = $('#recos');
+  if (!reco.length) {
+    recosEl.innerHTML = '<div class="muted">Aucun point faible majeur détecté — continuez comme ça !</div>';
+  } else {
+    recosEl.innerHTML = reco.map(r =>
+      `<div class="card" style="background:var(--panel2);margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <b>${r.titre}</b>
+          <button class="small primary" data-reco="${r.key}">Charger une séance type</button>
+        </div>
+        <div class="mt">${r.txt}</div>
+      </div>`
+    ).join('');
+    $$('[data-reco]', recosEl).forEach(b => b.addEventListener('click', () => {
+      const cfg = recoToConfig(b.dataset.reco, global || 'C');
+      loadSessionIntoForm(cfg);
+      goTab('train');
+      setTimeout(() => window.scrollTo({top:0,behavior:'smooth'}), 100);
+    }));
+  }
+
+  // Sauvegarde
+  Store.set('performances', {
+    sex, semi: semiSec, cinqKm: cinqSec, cote: coteM, volumeAuto: true, volume
+  });
+}
+
+$('#perf-save').addEventListener('click', evalBareme);
+$('#perf-sex').addEventListener('change', evalBareme);
+
+/* Génère une config de séance selon un point faible */
+function recoToConfig(key, niveau) {
+  const factor = {E:0.6, D:0.75, C:1, B:1.2, A:1.4, S:1.6}[niveau] || 1;
+  const base = { echauffement: 600, recupSeries: 0, retourCalme: 300 };
+  if (key === 'vitesse') {
+    return { nom: '30/30 (reco vitesse)', config: {...base, echauffement: 900, series: [{reps: Math.round(10*factor), effort: 30, recup: 30}] } };
+  }
+  if (key === 'cote') {
+    return { nom: 'Côtes (reco côte)', config: {...base, series: [{reps: Math.round(8*factor), effort: 120, recup: 120}] } };
+  }
+  if (key === 'endurance') {
+    return { nom: 'Blocs allure semi', config: {...base, series: [{reps: 2, effort: 20*60, recup: 5*60}] } };
+  }
+  if (key === 'volume') {
+    return { nom: 'Sortie longue par blocs', config: {...base, series: [{reps: 3, effort: 20*60, recup: 3*60}] } };
+  }
+  return { nom: 'Séance libre', config: base };
+}
+
+/* ------------------ RAFRAÎCHISSEMENT GLOBAL ------------------ */
+function refreshAnalyse() {
+  const acts = getActivities();
+  const coef = settings.coefficientDplus;
+  const {acwr, acute, chronic} = computeACWR(acts, coef);
+  const zone = acwrZone(acwr);
+  $('#acwr-value').textContent = acwr.toFixed(2);
+  $('#acwr-zone').innerHTML = `<span class="zone ${zone.cls}">${zone.label}</span>`;
+  $('#acwr-detail').textContent = `Aiguë 7j : ${acute} · Chronique 28j/4 : ${chronic}`;
+  renderActivityList();
+
+  // Volume hebdo (12 semaines)
+  const weeks = weeklyVolume(acts, 12);
+  const labels = weeks.map((_, i) => {
+    const d = new Date(); d.setDate(d.getDate() - (11 - i) * 7);
+    return `S${String(Math.ceil((d - new Date(d.getFullYear(),0,1)) / 604800000) + 1).padStart(2,'0')}`;
+  });
+  const colors = chartColors();
+  mkChart('chart-volume', {
+    type: 'bar',
+    data: { labels, datasets: [{
+      label: 'km', data: weeks,
+      backgroundColor: colors.accent, borderRadius: 4
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: colors.text, font:{size:10} }, grid: { display: false } },
+        y: { ticks: { color: colors.text, font:{size:10} }, grid: { color: colors.grid }, beginAtZero: true }
+      }
+    }
+  });
+
+  // ACWR daily (42 jours)
+  const days = 42;
+  const daily = dailyCharges(acts, days, coef);
+  const acwrSeriesArr = acwrSeries(acts, days, coef);
+  const dayLabels = Array.from({length:days}, (_,i) => {
+    const d = new Date(); d.setDate(d.getDate() - (days-1-i));
+    return d.getDate() + '/' + (d.getMonth()+1);
+  });
+  mkChart('chart-acwr', {
+    type: 'line',
+    data: {
+      labels: dayLabels,
+      datasets: [
+        { label: 'Charge quotidienne', data: daily, type: 'bar', backgroundColor: 'rgba(255,107,53,0.35)', borderColor: colors.accent, borderWidth: 0, order: 2, yAxisID: 'y' },
+        { label: 'ACWR', data: acwrSeriesArr, borderColor: '#4c9aff', backgroundColor: 'transparent', borderWidth: 2, tension: 0.3, pointRadius: 0, order: 1, yAxisID: 'y1' }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: colors.text, font:{size:11} } } },
+      scales: {
+        x: { ticks: { color: colors.text, font:{size:9}, maxTicksLimit: 8 }, grid: { display: false } },
+        y: { position: 'left', ticks: { color: colors.text, font:{size:10} }, grid: { color: colors.grid }, beginAtZero: true, title: { display: true, text: 'Charge', color: colors.text, font:{size:10} } },
+        y1: { position: 'right', ticks: { color: '#4c9aff', font:{size:10} }, grid: { display: false }, beginAtZero: true, title: { display: true, text: 'ACWR', color: '#4c9aff', font:{size:10} } }
+      }
+    }
+  });
+}
+
+/* ------------------ ONGLET 1 : DASHBOARD ------------------ */
+function refreshDashboard() {
+  const acts = getActivities();
+  const coef = settings.coefficientDplus;
+  const perf = Store.get('performances', {});
+  const sex = perf.sex || settings.sex || 'H';
+
+  // Rangs
+  const mult = sex === 'F' ? 1.12 : 1;
+  const red = sex === 'F' ? 0.85 : 1;
+  const vol = avgWeeklyVolume(acts, 4);
+  const grades = {
+    Endurance: perf.semi > 0 ? gradeFromThresholds(perf.semi/60, BAREME.endurance.seuils.map(t => t*mult), 'upper') : null,
+    Vitesse:   perf.cinqKm > 0 ? gradeFromThresholds(perf.cinqKm/60, BAREME.vitesse.seuils.map(t => t*mult), 'upper') : null,
+    Côte:      perf.cote > 0 ? gradeFromThresholds(perf.cote, BAREME.cote.seuils.map(t => t*red), 'lower') : null,
+    Volume:    vol > 0 ? gradeFromThresholds(vol, BAREME.volume.seuils.map(t => t*red), 'lower') : null
+  };
+  $('#dash-grades').innerHTML = Object.entries(grades).map(([k,g]) =>
+    `<div><span class="grade ${g ? 'g-'+g : 'g-none'}">${g || '—'}</span><div class="label">${k}</div></div>`
+  ).join('');
+  const list = Object.values(grades).filter(Boolean);
+  const global = list.length
+    ? GRADES[Math.round(list.reduce((s,g) => s + GRADES.indexOf(g), 0) / list.length)]
+    : null;
+  const gEl = $('#dash-global');
+  gEl.className = 'grade ' + (global ? 'g-'+global : 'g-none');
+  gEl.textContent = global || '—';
+
+  // ACWR
+  const {acwr} = computeACWR(acts, coef);
+  $('#dash-acwr').textContent = acwr.toFixed(2);
+  const zone = acwrZone(acwr);
+  $('#dash-acwr-zone').innerHTML = `<span class="zone ${zone.cls}">${zone.label}</span>`;
+
+  // Mini chart ACWR (28 j)
+  const daily = dailyCharges(acts, 28, coef);
+  const colors = chartColors();
+  mkChart('dash-acwr-chart', {
+    type: 'bar',
+    data: {
+      labels: Array.from({length:28}, (_,i) => i),
+      datasets: [{ data: daily, backgroundColor: colors.accent, borderRadius: 2 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: {
+        x: { display: false }, y: { display: false, beginAtZero: true }
+      }
+    }
+  });
+
+  // Objectif
+  const obj = settings.objectif || {};
+  if (obj.date) {
+    const diff = Math.ceil((new Date(obj.date) - new Date()) / 86400000);
+    $('#dash-objectif-content').innerHTML = `
+      <div class="big">${diff >= 0 ? 'J-' + diff : 'J+' + (-diff)}</div>
+      <div>${obj.nom || 'Objectif'}</div>
+      <div class="sub">${obj.distance ? fmt(obj.distance) + ' km' : ''} ${obj.dplus ? '· D+ ' + obj.dplus + ' m' : ''}</div>
+    `;
+  } else {
+    $('#dash-objectif-content').innerHTML = '<div class="muted">Aucun objectif défini.</div>';
+  }
+  $('#obj-nom').value = obj.nom || '';
+  $('#obj-date').value = obj.date || '';
+  $('#obj-dist').value = obj.distance || '';
+  $('#obj-dplus').value = obj.dplus || '';
+
+  // Dernière séance
+  const ds = settings.derniereSeance;
+  if (ds && ds.config) {
+    const nbSeries = (ds.config.series || []).length;
+    const total = (ds.config.series || []).reduce((s, x) => s + (x.reps*x.effort + (x.reps-1)*x.recup), 0);
+    $('#dash-seance').innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div>
+          <div><b>${ds.nom || 'Séance'}</b></div>
+          <div class="sub">${nbSeries} série(s) · ${fmtMMSS(total)} d'effort</div>
+        </div>
+        <button class="primary" id="dash-run">▶ Lancer</button>
+      </div>
+    `;
+    $('#dash-run').addEventListener('click', () => {
+      loadSessionIntoForm(ds);
+      Timer.start(buildConfigFromForm(), ds.nom);
+    });
+  } else {
+    $('#dash-seance').innerHTML = '<div class="muted">Aucune séance chargée pour l\'instant.</div>';
+  }
+}
+
+$('#obj-save').addEventListener('click', () => {
+  settings.objectif = {
+    nom: $('#obj-nom').value,
+    date: $('#obj-date').value,
+    distance: parseFloat($('#obj-dist').value) || 0,
+    dplus: parseInt($('#obj-dplus').value) || 0
+  };
+  saveSettings();
+  refreshDashboard();
+});
+
+/* ------------------ ONGLET 3.A : MINUTEUR ------------------ */
+const seriesList = $('#series-list');
+
+function addSeriesRow(data = {reps:6, effort:30, recup:30}) {
+  const div = document.createElement('div');
+  div.className = 'card';
+  div.style.background = 'var(--panel2)';
+  div.style.marginBottom = '10px';
+  div.innerHTML = `
+    <div class="row r3">
+      <div class="field"><label>Répétitions</label><input type="number" class="s-reps" min="1" value="${data.reps}"></div>
+      <div class="field"><label>Effort (mm:ss)</label><input class="s-effort" value="${fmtMMSS(data.effort)}"></div>
+      <div class="field"><label>Récup (mm:ss)</label><input class="s-recup" value="${fmtMMSS(data.recup)}"></div>
+    </div>
+    <button class="small ghost s-del">Retirer cette série</button>
+  `;
+  div.querySelector('.s-del').addEventListener('click', () => div.remove());
+  seriesList.appendChild(div);
+}
+addSeriesRow();
+
+$('#t-add-series').addEventListener('click', () => addSeriesRow());
+
+function buildConfigFromForm() {
+  const series = $$('#series-list .card').map(c => ({
+    reps: parseInt(c.querySelector('.s-reps').value) || 1,
+    effort: parseMMSS(c.querySelector('.s-effort').value),
+    recup: parseMMSS(c.querySelector('.s-recup').value)
+  }));
+  return {
+    echauffement: parseMMSS($('#t-warmup').value),
+    recupSeries: parseMMSS($('#t-recupseries').value),
+    retourCalme: parseMMSS($('#t-cooldown').value),
+    series
+  };
+}
+
+function loadSessionIntoForm(session) {
+  const cfg = session.config || session;
+  $('#t-nom').value = session.nom || '';
+  $('#t-warmup').value = fmtMMSS(cfg.echauffement || 0);
+  $('#t-cooldown').value = fmtMMSS(cfg.retourCalme || 0);
+  $('#t-recupseries').value = fmtMMSS(cfg.recupSeries || 0);
+  seriesList.innerHTML = '';
+  (cfg.series || []).forEach(s => addSeriesRow(s));
+  if (!cfg.series || !cfg.series.length) addSeriesRow();
+}
+
+/* Construction de la séquence de phases */
+function buildPhases(cfg) {
+  const phases = [];
+  const num = v => Math.max(0, Math.round(parseFloat(v) || 0));
+  if (num(cfg.echauffement) > 0) phases.push({type:'warmup', label:'Échauffement', dur: num(cfg.echauffement)});
+  const series = cfg.series || [];
+  series.forEach((s, si) => {
+    const reps = Math.max(1, Math.round(s.reps || 1));
+    const effort = num(s.effort);
+    const recup = num(s.recup);
+    for (let r = 1; r <= reps; r++) {
+      if (effort > 0) phases.push({type:'effort', label:'Effort', dur: effort, series: si+1, rep: r, totalReps: reps});
+      if (r < reps && recup > 0) {
+        phases.push({type:'rest', label:'Récupération', dur: recup, series: si+1, rep: r, totalReps: reps});
+      }
+    }
+    if (si < series.length - 1 && num(cfg.recupSeries) > 0) {
+      phases.push({type:'rest', label:'Récupération série', dur: num(cfg.recupSeries), series: si+1});
+    }
+  });
+  if (num(cfg.retourCalme) > 0) phases.push({type:'cooldown', label:'Retour au calme', dur: num(cfg.retourCalme)});
+  return phases;
+}
+
+const Timer = {
+  phases: [], idx: 0, remainMs: 0, running: false, muted: false,
+  timerId: null, lastBeepSec: -1, wakeLock: null, audioCtx: null, nom: '',
+
+  initAudio() {
+    if (!this.audioCtx) {
+      try {
+        this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      } catch(e) { console.warn('audio', e); }
+    }
+    if (this.audioCtx && this.audioCtx.state === 'suspended') this.audioCtx.resume();
+  },
+
+  beep(freq = 880, dur = 0.12, vol = 0.3) {
+    if (this.muted || !this.audioCtx) return;
+    const ctx = this.audioCtx;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.frequency.value = freq;
+    osc.type = 'sine';
+    g.gain.setValueAtTime(vol, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    osc.connect(g).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + dur);
+  },
+
+  async requestWakeLock() {
+    if ('wakeLock' in navigator) {
+      try {
+        this.wakeLock = await navigator.wakeLock.request('screen');
+        this.wakeLock.addEventListener('release', () => { this.wakeLock = null; });
+      } catch(e) { /* pas critique */ }
+    }
+  },
+  releaseWakeLock() {
+    if (this.wakeLock) { try { this.wakeLock.release(); } catch{} this.wakeLock = null; }
+  },
+
+  start(cfg, nom = '') {
+    const phases = buildPhases(cfg);
+    if (!phases.length) { alert('Séance vide : configurez au moins une phase.'); return; }
+    this.phases = phases;
+    this.idx = 0;
+    this.remainMs = phases[0].dur * 1000;
+    this.running = true;
+    this.nom = nom || 'Séance';
+    this.lastBeepSec = -1;
+    this.initAudio();
+    this.requestWakeLock();
+    $('#timer-overlay').hidden = false;
+    $('#timer-pause').textContent = '⏸ Pause';
+    this.render();
+    this.loop();
+    // Sauvegarde comme dernière séance
+    settings.derniereSeance = { nom: this.nom, config: cfg };
+    saveSettings();
+    refreshDashboard();
+  },
+
+  loop() {
+    clearInterval(this.timerId);
+    let last = Date.now();
+    this.timerId = setInterval(() => {
+      const now = Date.now();
+      const dt = now - last;
+      last = now;
+      if (!this.running) return;
+      this.remainMs -= dt;
+      // Beeps de décompte
+      const sec = Math.ceil(this.remainMs / 1000);
+      if (sec > 0 && sec <= 3 && sec !== this.lastBeepSec) {
+        this.lastBeepSec = sec;
+        this.beep(660, 0.08);
+      }
+      if (this.remainMs <= 0) this.nextPhase();
+      else this.render();
+    }, 100);
+  },
+
+  nextPhase() {
+    this.beep(1000, 0.18);
+    this.idx++;
+    if (this.idx >= this.phases.length) {
+      this.finish(true);
+      return;
+    }
+    this.remainMs = this.phases[this.idx].dur * 1000;
+    this.lastBeepSec = -1;
+    this.render();
+  },
+
+  render() {
+    const phase = this.phases[this.idx];
+    if (!phase) return;
+    const sec = Math.max(0, Math.ceil(this.remainMs / 1000));
+    $('#timer-time').textContent = fmtMMSS(sec);
+    $('#timer-phase').textContent = phase.label;
+    let rep = '';
+    if (phase.series) rep = `Série ${phase.series}`;
+    if (phase.rep) rep += ` · Rép ${phase.rep}/${phase.totalReps}`;
+    $('#timer-rep').textContent = rep;
+    $('#timer-overlay').classList.toggle('effort', phase.type === 'effort');
+    const pct = 100 - (Math.max(0, this.remainMs) / (phase.dur*1000) * 100);
+    $('#timer-progress-bar').style.width = Math.max(0, Math.min(100, pct)) + '%';
+  },
+
+  togglePause() {
+    this.running = !this.running;
+    $('#timer-pause').textContent = this.running ? '⏸ Pause' : '▶ Reprendre';
+  },
+
+  skip() {
+    this.nextPhase();
+  },
+
+  finish(natural) {
+    clearInterval(this.timerId);
+    this.running = false;
+    this.releaseWakeLock();
+    if (natural) {
+      this.beep(880, 0.15);
+      setTimeout(() => this.beep(1100, 0.3), 200);
+    }
+    $('#timer-overlay').hidden = true;
+    $('#timer-overlay').classList.remove('effort');
+    // Historique
+    if (natural) {
+      const hist = Store.get('historiqueMinuteur', []);
+      hist.push({ date: new Date().toISOString(), nom: this.nom, realise: true });
+      Store.set('historiqueMinuteur', hist);
+    }
+  }
+};
+
+$('#t-start').addEventListener('click', () => {
+  const cfg = buildConfigFromForm();
+  Timer.start(cfg, $('#t-nom').value || 'Séance');
+});
+$('#timer-pause').addEventListener('click', () => Timer.togglePause());
+$('#timer-skip').addEventListener('click', () => Timer.skip());
+$('#timer-stop').addEventListener('click', () => {
+  if (confirm('Arrêter la séance ?')) Timer.finish(false);
+});
+$('#timer-mute').addEventListener('click', e => {
+  Timer.muted = !Timer.muted;
+  e.currentTarget.textContent = Timer.muted ? '🔇' : '🔊';
+});
+
+/* Sauvegarde manuelle */
+$('#t-save').addEventListener('click', () => {
+  const nom = $('#t-nom').value || ('Séance ' + new Date().toLocaleDateString());
+  const cfg = buildConfigFromForm();
+  const list = Store.get('seances', []);
+  list.push({ id: 'se_' + Date.now(), nom, config: cfg });
+  Store.set('seances', list);
+  renderSavedSessions();
+  alert('Séance sauvegardée.');
+});
+
+function renderSavedSessions() {
+  const list = Store.get('seances', []);
+  const el = $('#saved-seances');
+  if (!list.length) {
+    el.innerHTML = '<div class="muted">Aucune séance sauvegardée.</div>';
+    return;
+  }
+  el.innerHTML = list.map(s => `
+    <div class="activity">
+      <div class="date">📁</div>
+      <div>
+        <div><b>${s.nom}</b></div>
+        <div class="metrics">${(s.config.series||[]).length} série(s)</div>
+      </div>
+      <button class="small" data-load="${s.id}">Charger</button>
+      <button class="del" data-delse="${s.id}" title="Supprimer">×</button>
+    </div>
+  `).join('');
+  $$('[data-load]', el).forEach(b => b.addEventListener('click', () => {
+    const s = list.find(x => x.id === b.dataset.load);
+    if (s) loadSessionIntoForm(s);
+  }));
+  $$('[data-delse]', el).forEach(b => b.addEventListener('click', () => {
+    if (!confirm('Supprimer cette séance ?')) return;
+    Store.set('seances', list.filter(x => x.id !== b.dataset.delse));
+    renderSavedSessions();
+  }));
+}
+renderSavedSessions();
+
+/* ------------------ ONGLET 3.B : GÉNÉRATEUR ------------------ */
+$('#gen-go').addEventListener('click', () => {
+  const objectif = $('#gen-objectif').value;
+  const niveau = $('#gen-niveau').value;
+  const factor = {E:0.6, D:0.75, C:1, B:1.2, A:1.4, S:1.6}[niveau] || 1;
+  const sessions = [];
+
+  if (objectif === 'Vitesse') {
+    sessions.push({
+      nom: '30/30',
+      desc: `${Math.round(10*factor)}×30 s à fond / 30 s récup active`,
+      config: { echauffement: 900, recupSeries: 0, retourCalme: 600,
+        series: [{reps: Math.round(10*factor), effort: 30, recup: 30}] }
+    });
+    sessions.push({
+      nom: 'Côtes courtes',
+      desc: `${Math.round(8*factor)}×45 s en côte / 90 s descente`,
+      config: { echauffement: 900, recupSeries: 0, retourCalme: 600,
+        series: [{reps: Math.round(8*factor), effort: 45, recup: 90}] }
+    });
+    sessions.push({
+      nom: 'Fartlek 1-2-3',
+      desc: '2×(1 min / 2 min / 3 min) @ 5km-10km allure, récup = effort',
+      config: { echauffement: 900, recupSeries: 180, retourCalme: 600,
+        series: [{reps:1, effort:60, recup:60}, {reps:1, effort:120, recup:120}, {reps:1, effort:180, recup:180}] }
+    });
+  } else if (objectif === 'Cote') {
+    sessions.push({
+      nom: 'Montées 2 min',
+      desc: `${Math.round(8*factor)}×2 min en montée / 2 min récup en descente`,
+      config: { echauffement: 900, recupSeries: 0, retourCalme: 600,
+        series: [{reps: Math.round(8*factor), effort: 120, recup: 120}] }
+    });
+    sessions.push({
+      nom: '10×1 min en côte',
+      desc: `${Math.round(10*factor)}×1 min côte raide / 90 s descente`,
+      config: { echauffement: 900, recupSeries: 0, retourCalme: 600,
+        series: [{reps: Math.round(10*factor), effort: 60, recup: 90}] }
+    });
+  } else if (objectif === 'Endurance') {
+    sessions.push({
+      nom: 'Blocs allure semi',
+      desc: `3×15 min à allure semi / 5 min récup`,
+      config: { echauffement: 1200, recupSeries: 0, retourCalme: 600,
+        series: [{reps: 3, effort: 900, recup: 300}] }
+    });
+    sessions.push({
+      nom: 'Sortie longue par blocs',
+      desc: `4×20 min à allure marathon / 3 min récup`,
+      config: { echauffement: 1200, recupSeries: 0, retourCalme: 600,
+        series: [{reps: 4, effort: 1200, recup: 180}] }
+    });
+  } else {
+    sessions.push({
+      nom: 'Récupération douce',
+      desc: '30 min en Z1/Z2 avec marche si besoin',
+      config: { echauffement: 0, recupSeries: 0, retourCalme: 0,
+        series: [{reps:1, effort: 1800, recup: 0}] }
+    });
+    sessions.push({
+      nom: 'Footing + lignes droites',
+      desc: '30 min footing + 6×20 s progressif',
+      config: { echauffement: 1800, recupSeries: 0, retourCalme: 300,
+        series: [{reps: 6, effort: 20, recup: 60}] }
+    });
+  }
+
+  $('#gen-output').innerHTML = sessions.map((s, i) => `
+    <div class="card" style="background:var(--panel2);margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div>
+          <b>${s.nom}</b>
+          <div class="sub">${s.desc}</div>
+        </div>
+        <button class="small primary" data-genload="${i}">Charger dans le minuteur</button>
+      </div>
+    </div>
+  `).join('');
+  $$('[data-genload]', $('#gen-output')).forEach(b => b.addEventListener('click', () => {
+    const s = sessions[parseInt(b.dataset.genload)];
+    loadSessionIntoForm(s);
+    goTab('train');
+    setTimeout(() => window.scrollTo({top:0,behavior:'smooth'}), 100);
+  }));
+});
+
+/* ------------------ ONGLET 3.C : CALCULATEUR D'ALLURE ------------------ */
+$('#pc-calc').addEventListener('click', () => {
+  const dist = parseFloat($('#pc-dist').value) || 0;
+  const dplus = parseFloat($('#pc-dplus').value) || 0;
+  const dminus = parseFloat($('#pc-dminus').value) || 0;
+  const paceSec = parseMMSS($('#pc-pace').value);
+  if (!dist || !paceSec) return;
+  const baseMin = dist * (paceSec/60);
+  const upMin = (dplus / 100) * settings.paceCoefUp;
+  const downMin = (dminus / 100) * settings.paceCoefDown;
+  const totalMin = baseMin + upMin - downMin;
+  const paceAvg = totalMin / dist;
+
+  let html = `
+    <div class="card" style="background:var(--panel2);margin-bottom:12px">
+      <div><span class="muted">Temps estimé</span></div>
+      <div class="big">${fmtMMSS(totalMin*60)}</div>
+      <div class="sub">Allure moyenne : ${fmtMMSS(paceAvg*60)} /km</div>
+    </div>
+  `;
+  // Splits tous les 5 km + final
+  const splits = [];
+  for (let km = 5; km < dist; km += 5) splits.push(km);
+  splits.push(dist);
+  const now = new Date();
+  let rows = '';
+  splits.forEach(km => {
+    const t = totalMin * (km/dist);
+    const eta = new Date(now.getTime() + t*60000);
+    rows += `<tr>
+      <td>${fmt(km)} km</td>
+      <td>${fmtMMSS(t*60)}</td>
+      <td>${fmtMMSS(paceAvg*60)} /km</td>
+      <td>${eta.getHours().toString().padStart(2,'0')}:${eta.getMinutes().toString().padStart(2,'0')}</td>
+    </tr>`;
+  });
+  html += `<table class="splits-table">
+    <thead><tr><th>Distance</th><th>Cumul</th><th>Allure moy.</th><th>Heure passage</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+  html += `<div class="muted mt">Formule : dist × allure + (D+/100)×${settings.paceCoefUp} − (D−/100)×${settings.paceCoefDown} (min). Coefficients ajustables dans le code (settings).</div>`;
+  $('#pc-result').innerHTML = html;
+});
+
+/* ------------------ ONGLET 4.A : CARTE ------------------ */
+let map = null, polyline = null, markersLayer = null;
+let tracePoints = [];
+let elevationData = null;
+
+function initMap() {
+  if (map) return;
+  map = L.map('map').setView([46.2, 2.5], 5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18, attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+  markersLayer = L.layerGroup().addTo(map);
+  polyline = L.polyline([], {color: '#ff6b35', weight: 3}).addTo(map);
+
+  map.on('click', e => {
+    tracePoints.push([e.latlng.lat, e.latlng.lng]);
+    L.circleMarker(e.latlng, {radius:5, color:'#ff6b35', fillColor:'#ff6b35', fillOpacity:1}).addTo(markersLayer);
+    polyline.setLatLngs(tracePoints);
+    refreshTrace();
+  });
+}
+
+function haversine([lat1,lon1],[lat2,lon2]) {
+  const R = 6371000;
+  const φ1 = lat1*Math.PI/180, φ2 = lat2*Math.PI/180;
+  const dφ = (lat2-lat1)*Math.PI/180;
+  const dλ = (lon2-lon1)*Math.PI/180;
+  const a = Math.sin(dφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(dλ/2)**2;
+  return 2*R*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+async function fetchElevations(points) {
+  if (points.length < 2) return [];
+  const lats = points.map(p => p[0].toFixed(5)).join(',');
+  const lons = points.map(p => p[1].toFixed(5)).join(',');
+  const url = `https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lons}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Altitude');
+  const data = await res.json();
+  return data.elevation || [];
+}
+
+async function refreshTrace() {
+  const info = $('#map-info');
+  if (tracePoints.length < 2) {
+    info.innerHTML = '<span class="muted">Cliquez sur la carte pour ajouter des points.</span>';
+    if (charts.profil) { charts.profil.destroy(); delete charts.profil; }
+    return;
+  }
+  let totalDist = 0;
+  for (let i = 1; i < tracePoints.length; i++) totalDist += haversine(tracePoints[i-1], tracePoints[i]);
+  info.innerHTML = `<b>${fmt(totalDist/1000, 2)} km</b> — <span class="muted">calcul D+ en cours…</span>`;
+  try {
+    const elevs = await fetchElevations(tracePoints);
+    let dplus = 0;
+    for (let i = 1; i < elevs.length; i++) {
+      const diff = elevs[i] - elevs[i-1];
+      if (diff > 0) dplus += diff;
+    }
+    info.innerHTML = `<b>${fmt(totalDist/1000, 2)} km</b> — D+ estimé : <b>${Math.round(dplus)} m</b>`;
+    // Profil
+    const dists = [0];
+    let cum = 0;
+    for (let i = 1; i < tracePoints.length; i++) { cum += haversine(tracePoints[i-1], tracePoints[i]); dists.push(cum/1000); }
+    const colors = chartColors();
+    mkChart('chart-profil', {
+      type: 'line',
+      data: {
+        labels: dists.map(d => fmt(d,1)),
+        datasets: [{ label:'Altitude (m)', data: elevs, borderColor: colors.accent, backgroundColor: 'rgba(255,107,53,0.15)', fill: true, tension: 0.3, pointRadius: 0 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: colors.text, font:{size:9}, maxTicksLimit: 8 }, grid: { color: colors.grid } },
+          y: { ticks: { color: colors.text, font:{size:10} }, grid: { color: colors.grid } }
+        }
+      }
+    });
+    elevationData = elevs;
+  } catch(e) {
+    info.innerHTML = `<b>${fmt(totalDist/1000, 2)} km</b> — <span class="muted">D+ indisponible (${e.message})</span>`;
+  }
+}
+
+$('#map-undo').addEventListener('click', () => {
+  if (!tracePoints.length) return;
+  tracePoints.pop();
+  markersLayer.clearLayers();
+  tracePoints.forEach(p => L.circleMarker(p, {radius:5, color:'#ff6b35', fillColor:'#ff6b35', fillOpacity:1}).addTo(markersLayer));
+  polyline.setLatLngs(tracePoints);
+  refreshTrace();
+});
+$('#map-clear').addEventListener('click', () => {
+  tracePoints = []; markersLayer.clearLayers(); polyline.setLatLngs([]);
+  refreshTrace();
+});
+$('#map-gpx').addEventListener('click', () => {
+  if (tracePoints.length < 2) return alert('Ajoutez au moins 2 points.');
+  let gpx = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Trail Hub" xmlns="http://www.topografix.com/GPX/1/1">\n<metadata><name>Trail Hub trace</name></metadata>\n<trk><name>Trace</name><trkseg>\n`;
+  tracePoints.forEach((p, i) => {
+    const ele = elevationData && elevationData[i] !== undefined ? `<ele>${elevationData[i]}</ele>` : '';
+    gpx += `<trkpt lat="${p[0]}" lon="${p[1]}">${ele}</trkpt>\n`;
+  });
+  gpx += `</trkseg></trk>\n</gpx>`;
+  const blob = new Blob([gpx], {type: 'application/gpx+xml'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'trailhub-trace.gpx';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+/* ------------------ ONGLET 4.B : MÉTÉO ------------------ */
+$('#weather-go').addEventListener('click', async () => {
+  const q = $('#weather-q').value.trim();
+  if (!q) return;
+  const out = $('#weather-out');
+  out.innerHTML = '<div class="muted">Recherche…</div>';
+  try {
+    const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`,
+      {headers: {'Accept-Language': 'fr'}});
+    const geo = await geoRes.json();
+    if (!geo.length) throw new Error('Lieu introuvable');
+    const {lat, lon, display_name} = geo[0];
+    const meteoRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,precipitation,wind_speed_10m,uv_index&forecast_days=2&timezone=auto`);
+    const meteo = await meteoRes.json();
+    const nowH = new Date();
+    const idxStart = nowH.getHours();
+    const temp = meteo.hourly.temperature_2m.slice(idxStart, idxStart+24);
+    const precip = meteo.hourly.precipitation.slice(idxStart, idxStart+24);
+    const wind = meteo.hourly.wind_speed_10m.slice(idxStart, idxStart+24);
+    const uv = meteo.hourly.uv_index.slice(idxStart, idxStart+24);
+    const labels = meteo.hourly.time.slice(idxStart, idxStart+24).map(t => t.slice(11,16));
+
+    out.innerHTML = `
+      <div class="muted" style="margin-bottom:8px">${display_name}</div>
+      <div class="weather-grid">
+        <div class="weather-card"><div class="val">${fmt(temp[0]||0,1)}°C</div><div class="lbl">Maintenant</div></div>
+        <div class="weather-card"><div class="val">${fmt(Math.min(...temp),1)}–${fmt(Math.max(...temp),1)}°C</div><div class="lbl">24 h</div></div>
+        <div class="weather-card"><div class="val">${fmt(precip.reduce((s,v)=>s+v,0),1)} mm</div><div class="lbl">Précipitations 24 h</div></div>
+        <div class="weather-card"><div class="val">${fmt(Math.max(...wind),0)} km/h</div><div class="lbl">Vent max</div></div>
+      </div>
+      <div class="chart-box mt"><canvas id="chart-meteo"></canvas></div>
+    `;
+    const colors = chartColors();
+    mkChart('chart-meteo', {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          { label:'Temp (°C)', data: temp, borderColor: colors.accent, backgroundColor:'transparent', tension: 0.3, pointRadius: 0, yAxisID:'y' },
+          { label:'Vent (km/h)', data: wind, borderColor:'#4c9aff', backgroundColor:'transparent', tension: 0.3, pointRadius: 0, yAxisID:'y1' }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: colors.text, font:{size:11} } } },
+        scales: {
+          x: { ticks: { color: colors.text, font:{size:9}, maxTicksLimit: 8 }, grid: { display: false } },
+          y: { ticks: { color: colors.text, font:{size:10} }, grid: { color: colors.grid } },
+          y1: { position:'right', ticks: { color:'#4c9aff', font:{size:10} }, grid: { display: false } }
+        }
+      }
+    });
+  } catch(e) {
+    out.innerHTML = `<div class="zone rouge">${e.message}</div>`;
+  }
+});
+
+/* ------------------ ONGLET 4.C : NUTRITION ------------------ */
+$('#nut-go').addEventListener('click', () => {
+  const dur = parseFloat($('#nut-dur').value) || 0;
+  const poids = parseFloat($('#nut-poids').value) || 70;
+  const temp = parseFloat($('#nut-temp').value) || 20;
+  const int = $('#nut-int').value;
+
+  let glucides = 60;
+  if (dur > 3) glucides = 90;
+  if (dur > 6 && int === 'ultra') glucides = 120;
+
+  let eauBase = { moderee: 500, soutenue: 700, ultra: 800 }[int] || 600;
+  const extraChaud = Math.max(0, Math.floor((temp - 20) / 5)) * 200;
+  const eau = eauBase + extraChaud;
+
+  const sodium = 500;
+
+  const totalGlucides = Math.round(glucides * dur);
+  const totalEau = Math.round(eau * dur);
+  const totalSodium = Math.round(sodium * dur);
+
+  // Planification gels/barres
+  const gels = Math.max(1, Math.round(totalGlucides * 0.6 / 30));
+  const barres = Math.max(1, Math.round(totalGlucides * 0.4 / 40));
+  const flasques = Math.max(1, Math.round(totalEau / 600));
+
+  const intervalGel = dur > 0 ? dur / gels : 0;
+  const intervalBarre = dur > 0 ? dur / barres : 0;
+
+  let heures = '';
+  for (let i = 1; i <= gels; i++) {
+    const t = intervalGel * i;
+    const h = Math.floor(t);
+    const m = Math.round((t-h)*60);
+    heures += `<div>🍬 Gel #${i} à ${h}h${String(m).padStart(2,'0')}</div>`;
+  }
+
+  $('#nut-out').innerHTML = `
+    <div class="weather-grid">
+      <div class="weather-card"><div class="val">${glucides} g/h</div><div class="lbl">Glucides (${totalGlucides} g total)</div></div>
+      <div class="weather-card"><div class="val">${eau} ml/h</div><div class="lbl">Eau (${(totalEau/1000).toFixed(1)} L total)</div></div>
+      <div class="weather-card"><div class="val">${sodium} mg/h</div><div class="lbl">Sodium (${totalSodium} mg total)</div></div>
+      <div class="weather-card"><div class="val">${flasques}</div><div class="lbl">Flasques 600 ml</div></div>
+    </div>
+    <div class="card mt" style="background:var(--panel2)">
+      <b>Planning</b>
+      <div class="mt">${gels} gels (30 g chaque) · ${barres} barres (40 g) · ${flasques} flasques de 600 ml</div>
+      <div class="mt">${heures}</div>
+      <div class="mt muted">Poids ${poids} kg · Temp ${temp}°C · ${int}</div>
+    </div>
+  `;
+});
+
+/* ------------------ ONGLET 5 : DONNÉES ------------------ */
+$('#data-export').addEventListener('click', () => {
+  const data = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    data: Store.all()
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `trailhub-export-${todayISO()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+$('#data-import-btn').addEventListener('click', () => $('#data-import-file').click());
+$('#data-import-file').addEventListener('change', async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try {
+    const text = await f.text();
+    const json = JSON.parse(text);
+    const data = json.data || json;
+    const mode = $('#data-import-mode').value;
+    if (mode === 'replace') {
+      if (!confirm('Remplacer TOUTES les données actuelles ?')) return;
+      Store.clearAll();
+      Object.entries(data).forEach(([k,v]) => Store.set(k, v));
+    } else {
+      Object.entries(data).forEach(([k,v]) => {
+        if (k === 'activities') {
+          const cur = Store.get('activities', []);
+          const ids = new Set(cur.map(a => a.id));
+          const merged = cur.concat((v||[]).filter(a => !ids.has(a.id)));
+          Store.set('activities', merged);
+        } else if (k === 'seances') {
+          const cur = Store.get('seances', []);
+          const ids = new Set(cur.map(s => s.id));
+          const merged = cur.concat((v||[]).filter(s => !ids.has(s.id)));
+          Store.set('seances', merged);
+        } else {
+          Store.set(k, v);
+        }
+      });
+    }
+    settings = Object.assign({}, DEFAULT_SETTINGS, Store.get('settings', {}));
+    $('#data-status').innerHTML = '<span class="zone vert">Import réussi.</span>';
+    applyTheme(); init(); // re-render
+  } catch(e) {
+    $('#data-status').innerHTML = `<span class="zone rouge">Erreur : ${e.message}</span>`;
+  }
+});
+
+$('#data-reset').addEventListener('click', () => {
+  if (!confirm('ATTENTION — Effacer TOUTES les données Trail Hub ?')) return;
+  if (!confirm('Confirmez une dernière fois. Cette action est irréversible.')) return;
+  Store.clearAll();
+  settings = {...DEFAULT_SETTINGS};
+  $('#data-status').innerHTML = '<span class="zone vert">Toutes les données ont été effacées.</span>';
+  init();
+});
+
+/* ------------------ INITIALISATION ------------------ */
+function init() {
+  // Charge perf
+  const perf = Store.get('performances', {});
+  $('#perf-sex').value = perf.sex || settings.sex || 'H';
+  $('#perf-semi').value = perf.semi ? fmtMMSS(perf.semi) : '';
+  $('#perf-5k').value = perf.cinqKm ? fmtMMSS(perf.cinqKm) : '';
+  $('#perf-cote').value = perf.cote || '';
+
+  // Objectif
+  const obj = settings.objectif || {};
+  $('#obj-nom').value = obj.nom || '';
+  $('#obj-date').value = obj.date || '';
+  $('#obj-dist').value = obj.distance || '';
+  $('#obj-dplus').value = obj.dplus || '';
+
+  // Coef D+
+  $('#coef-dplus').value = settings.coefficientDplus;
+
+  // Allure plat
+  $('#pc-pace').value = settings.allurePlat || '6:00';
+
+  // Carte (lazy init à l'ouverture de l'onglet)
+  // On l'initialise au clic sur l'onglet
+  document.querySelector('.tabs button[data-tab="terrain"]').addEventListener('click', () => {
+    if (!map) setTimeout(initMap, 100);
+    else setTimeout(() => map.invalidateSize(), 100);
+  }, {once: false});
+
+  // Date par défaut pour activité manuelle
+  $('#man-date').value = todayISO();
+
+  // Calculs initiaux
+  refreshAnalyse();
+  refreshDashboard();
+  if (perf.semi || perf.cinqKm || perf.cote) evalBareme();
+}
+
+function refreshAllCharts() {
+  refreshAnalyse();
+  refreshDashboard();
+  if ($('#perf-semi').value || $('#perf-5k').value || $('#perf-cote').value) evalBareme();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+// Fallback si DOMContentLoaded déjà passé
+if (document.readyState !== 'loading') init();
+
+/* Service Worker minimal (best-effort via Blob) — peut échouer selon navigateur */
+if ('serviceWorker' in navigator) {
+  try {
+    const swCode = `
+      const CACHE = 'trailhub-v1';
+      self.addEventListener('install', e => self.skipWaiting());
+      self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+      self.addEventListener('fetch', e => {
+        // Ne pas interférer avec les API externes
+        const url = e.request.url;
+        if (url.includes('open-meteo') || url.includes('nominatim') || url.includes('tile.openstreetmap')) return;
+        e.respondWith(
+          caches.open(CACHE).then(c => c.match(e.request).then(r => r || fetch(e.request).then(res => {
+            if (res.ok && e.request.method === 'GET') c.put(e.request, res.clone());
+            return res;
+          })))
+        );
+      });
+    `;
+    const blob = new Blob([swCode], {type: 'application/javascript'});
+    const swUrl = URL.createObjectURL(blob);
+    navigator.serviceWorker.register(swUrl).catch(() => {});
+  } catch(e) { /* silencieux */ }
+}
+</script>
+</body>
+</html>
